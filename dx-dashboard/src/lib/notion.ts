@@ -1,9 +1,23 @@
 import { Task, TaskStatus, TaskPriority } from "@/types/task";
 
+/**
+ * Notion integration supporting two modes:
+ *
+ * 1. MCP mode (preferred): Set NOTION_MCP_URL to your Notion MCP server endpoint
+ *    (e.g. http://localhost:3100/mcp for local @notionhq/notion-mcp-server,
+ *    or https://mcp.notion.com/mcp for Notion's hosted MCP).
+ *    The MCP server handles auth via OAuth or its own NOTION_TOKEN.
+ *
+ * 2. Direct API mode (fallback): Set NOTION_API_KEY + NOTION_DATABASE_ID to
+ *    call the Notion REST API directly.
+ *
+ * If neither is configured, returns empty (dashboard falls back to mock data).
+ */
+
 const NOTION_API_BASE = "https://api.notion.com/v1";
 const NOTION_VERSION = "2022-06-28";
 
-function headers() {
+function apiHeaders() {
   return {
     Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
     "Notion-Version": NOTION_VERSION,
@@ -38,17 +52,74 @@ function getPlainText(richText: Array<{ plain_text: string }>): string {
   return richText.map((t) => t.plain_text).join("");
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-export async function fetchTasksFromNotion(): Promise<Task[]> {
-  if (!process.env.NOTION_API_KEY || !process.env.NOTION_DATABASE_ID) {
-    return [];
-  }
+// ---------------------------------------------------------------------------
+// MCP transport: call the Notion MCP server over Streamable HTTP (JSON-RPC)
+// ---------------------------------------------------------------------------
+
+async function mcpCall(
+  toolName: string,
+  args: Record<string, unknown>
+): Promise<unknown> {
+  const mcpUrl = process.env.NOTION_MCP_URL!;
+  const res = await fetch(mcpUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: Date.now(),
+      method: "tools/call",
+      params: { name: toolName, arguments: args },
+    }),
+  });
+  if (!res.ok) throw new Error(`MCP request failed: ${res.status}`);
+  const json = await res.json();
+  if (json.error) throw new Error(json.error.message);
+  return json.result;
+}
+
+async function fetchTasksViaMcp(): Promise<Task[]> {
+  const databaseId = process.env.NOTION_DATABASE_ID;
+  if (!databaseId) return [];
+
+  const result = (await mcpCall("notion_query_database", {
+    database_id: databaseId,
+    sorts: [{ property: "Created", direction: "descending" }],
+  })) as { content?: Array<{ text?: string }> };
+
+  if (!result?.content?.[0]?.text) return [];
+
+  const data = JSON.parse(result.content[0].text);
+  const pages = Array.isArray(data) ? data : data?.results;
+  if (!Array.isArray(pages)) return [];
+
+  return mapNotionPages(pages);
+}
+
+async function updateTaskViaMcp(
+  taskId: string,
+  statusName: string
+): Promise<void> {
+  await mcpCall("notion_update_page", {
+    page_id: taskId,
+    properties: {
+      Status: { status: { name: statusName } },
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Direct REST API transport
+// ---------------------------------------------------------------------------
+
+async function fetchTasksViaApi(): Promise<Task[]> {
+  const databaseId = process.env.NOTION_DATABASE_ID;
+  if (!process.env.NOTION_API_KEY || !databaseId) return [];
 
   const res = await fetch(
-    `${NOTION_API_BASE}/databases/${process.env.NOTION_DATABASE_ID}/query`,
+    `${NOTION_API_BASE}/databases/${databaseId}/query`,
     {
       method: "POST",
-      headers: headers(),
+      headers: apiHeaders(),
       body: JSON.stringify({
         sorts: [{ property: "Created", direction: "descending" }],
       }),
@@ -56,11 +127,33 @@ export async function fetchTasksFromNotion(): Promise<Task[]> {
   );
 
   if (!res.ok) return [];
-
   const data = await res.json();
+  return mapNotionPages(data.results);
+}
 
-  return (data.results as any[]).map((page: any) => {
-    const props = page.properties;
+async function updateTaskViaApi(
+  taskId: string,
+  statusName: string
+): Promise<void> {
+  await fetch(`${NOTION_API_BASE}/pages/${taskId}`, {
+    method: "PATCH",
+    headers: apiHeaders(),
+    body: JSON.stringify({
+      properties: {
+        Status: { status: { name: statusName } },
+      },
+    }),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Shared page mapper
+// ---------------------------------------------------------------------------
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function mapNotionPages(pages: any[]): Task[] {
+  return pages.map((page: any) => {
+    const props = page.properties || {};
 
     const titleProp = props.Name || props.Title || props.Task;
     const title = titleProp?.title
@@ -95,6 +188,13 @@ export async function fetchTasksFromNotion(): Promise<Task[]> {
       ? tagsProp.multi_select.map((t: any) => t.name)
       : [];
 
+    const repoProp = props.Repo || props.Repository || props["GitHub Repo"];
+    const repo = repoProp?.url
+      ? (repoProp.url as string).replace("https://github.com/", "")
+      : repoProp?.rich_text
+        ? getPlainText(repoProp.rich_text)
+        : "";
+
     return {
       id: page.id,
       title,
@@ -102,6 +202,7 @@ export async function fetchTasksFromNotion(): Promise<Task[]> {
       status,
       priority,
       assignee,
+      repo,
       dueDate,
       tags,
       createdAt: page.created_time,
@@ -109,30 +210,37 @@ export async function fetchTasksFromNotion(): Promise<Task[]> {
     };
   });
 }
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+// ---------------------------------------------------------------------------
+// Public API — picks the right transport automatically
+// ---------------------------------------------------------------------------
+
+export async function fetchTasksFromNotion(): Promise<Task[]> {
+  if (process.env.NOTION_MCP_URL) {
+    return fetchTasksViaMcp();
+  }
+  return fetchTasksViaApi();
+}
 
 export async function updateTaskStatus(
   taskId: string,
   status: TaskStatus
 ): Promise<void> {
-  if (!process.env.NOTION_API_KEY) return;
-
   const statusMap: Record<TaskStatus, string> = {
     todo: "To Do",
     in_progress: "In Progress",
     review: "In Review",
     done: "Done",
   };
+  const statusName = statusMap[status];
 
-  await fetch(`${NOTION_API_BASE}/pages/${taskId}`, {
-    method: "PATCH",
-    headers: headers(),
-    body: JSON.stringify({
-      properties: {
-        Status: {
-          status: { name: statusMap[status] },
-        },
-      },
-    }),
-  });
+  if (process.env.NOTION_MCP_URL) {
+    await updateTaskViaMcp(taskId, statusName);
+    return;
+  }
+
+  if (process.env.NOTION_API_KEY) {
+    await updateTaskViaApi(taskId, statusName);
+  }
 }
-/* eslint-enable @typescript-eslint/no-explicit-any */

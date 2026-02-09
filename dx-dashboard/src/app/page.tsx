@@ -1,6 +1,7 @@
 import StatCard from "@/components/StatCard";
 import TaskStatusBadge from "@/components/TaskStatusBadge";
 import PriorityBadge from "@/components/PriorityBadge";
+import RepoLink from "@/components/RepoLink";
 import { mockTasks } from "@/lib/mock-data";
 
 export default function DashboardPage() {
@@ -76,7 +77,10 @@ export default function DashboardPage() {
               <div key={task.id} className="flex items-center justify-between py-3 border-b border-border last:border-0">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{task.title}</p>
-                  <p className="text-xs text-text-muted mt-1">{task.assignee}</p>
+                  <div className="flex items-center gap-3 mt-1">
+                    <p className="text-xs text-text-muted">{task.assignee}</p>
+                    <RepoLink repo={task.repo} size="xs" />
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 ml-4">
                   <TaskStatusBadge status={task.status} />

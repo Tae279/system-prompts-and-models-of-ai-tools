@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { mockTasks } from "@/lib/mock-data";
 import TaskStatusBadge from "@/components/TaskStatusBadge";
 import PriorityBadge from "@/components/PriorityBadge";
+import RepoLink from "@/components/RepoLink";
 import { Task, SortField, SortDirection, TaskStatus, TaskPriority } from "@/types/task";
 
 const priorityOrder: Record<TaskPriority, number> = {
@@ -53,6 +54,7 @@ export default function TasksPage() {
           t.title.toLowerCase().includes(q) ||
           t.description.toLowerCase().includes(q) ||
           t.assignee.toLowerCase().includes(q) ||
+          t.repo.toLowerCase().includes(q) ||
           t.tags.some((tag) => tag.toLowerCase().includes(q))
       );
     }
@@ -74,6 +76,9 @@ export default function TasksPage() {
           break;
         case "assignee":
           comparison = a.assignee.localeCompare(b.assignee);
+          break;
+        case "repo":
+          comparison = a.repo.localeCompare(b.repo);
           break;
       }
       return sortDirection === "asc" ? comparison : -comparison;
@@ -156,6 +161,7 @@ export default function TasksPage() {
               <tr className="border-b border-border bg-surface-alt">
                 {[
                   { field: "title" as SortField, label: "Task" },
+                  { field: "repo" as SortField, label: "Repo" },
                   { field: "status" as SortField, label: "Status" },
                   { field: "priority" as SortField, label: "Priority" },
                   { field: "assignee" as SortField, label: "Assignee" },
@@ -190,6 +196,9 @@ export default function TasksPage() {
                         {task.description}
                       </p>
                     </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <RepoLink repo={task.repo} />
                   </td>
                   <td className="px-6 py-4">
                     <TaskStatusBadge status={task.status} />
@@ -228,7 +237,7 @@ export default function TasksPage() {
               ))}
               {sortedAndFilteredTasks.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-text-muted">
+                  <td colSpan={7} className="px-6 py-12 text-center text-text-muted">
                     No tasks found matching your filters.
                   </td>
                 </tr>

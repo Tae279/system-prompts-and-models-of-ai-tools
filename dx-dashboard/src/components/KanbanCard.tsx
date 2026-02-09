@@ -4,6 +4,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Task } from "@/types/task";
 import PriorityBadge from "./PriorityBadge";
+import RepoLink from "./RepoLink";
 
 interface KanbanCardProps {
   task: Task;
@@ -62,8 +63,14 @@ export default function KanbanCard({ task }: KanbanCardProps) {
         )}
       </div>
 
+      {task.repo && (
+        <div className="mt-2">
+          <RepoLink repo={task.repo} size="xs" />
+        </div>
+      )}
+
       {task.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-3">
+        <div className="flex flex-wrap gap-1 mt-2">
           {task.tags.slice(0, 2).map((tag) => (
             <span
               key={tag}

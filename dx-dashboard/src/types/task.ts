@@ -8,6 +8,7 @@ export interface Task {
   status: TaskStatus;
   priority: TaskPriority;
   assignee: string;
+  repo: string;
   dueDate: string;
   tags: string[];
   createdAt: string;
@@ -20,5 +21,5 @@ export interface Column {
   tasks: Task[];
 }
 
-export type SortField = "title" | "priority" | "status" | "dueDate" | "assignee";
+export type SortField = "title" | "priority" | "status" | "dueDate" | "assignee" | "repo";
 export type SortDirection = "asc" | "desc";
