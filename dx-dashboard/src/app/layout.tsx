@@ -3,8 +3,8 @@ import Sidebar from "@/components/Sidebar";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "DX Dashboard",
-  description: "Developer Experience Dashboard - Track tasks, manage boards, and monitor team productivity",
+  title: "Claude AI | Cowork / Code",
+  description: "Claude AI Cowork / Code - Collaborative task management powered by Claude",
 };
 
 export default function RootLayout({

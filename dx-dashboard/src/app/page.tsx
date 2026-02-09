@@ -18,7 +18,7 @@ export default function DashboardPage() {
     <div>
       <div className="mb-8">
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-text-muted mt-1">Overview of your team&apos;s developer experience metrics</p>
+        <p className="text-text-muted mt-1">Claude AI / Cowork / Code &mdash; collaborative task overview</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
