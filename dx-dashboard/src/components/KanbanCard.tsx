@@ -4,6 +4,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Task } from "@/types/task";
 import PriorityBadge from "./PriorityBadge";
+import SourceBadge from "./SourceBadge";
 import RepoLink from "./RepoLink";
 
 interface KanbanCardProps {
@@ -37,6 +38,10 @@ export default function KanbanCard({ task }: KanbanCardProps) {
       <div className="flex items-start justify-between mb-2">
         <h3 className="text-sm font-medium leading-tight">{task.title}</h3>
         <PriorityBadge priority={task.priority} />
+      </div>
+
+      <div className="mb-2">
+        <SourceBadge source={task.source} />
       </div>
 
       {task.description && (

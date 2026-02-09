@@ -4,8 +4,9 @@ import { useState, useMemo } from "react";
 import { mockTasks } from "@/lib/mock-data";
 import TaskStatusBadge from "@/components/TaskStatusBadge";
 import PriorityBadge from "@/components/PriorityBadge";
+import SourceBadge from "@/components/SourceBadge";
 import RepoLink from "@/components/RepoLink";
-import { Task, SortField, SortDirection, TaskStatus, TaskPriority } from "@/types/task";
+import { Task, SortField, SortDirection, TaskStatus, TaskPriority, TaskSource } from "@/types/task";
 
 const priorityOrder: Record<TaskPriority, number> = {
   urgent: 0,
@@ -27,6 +28,7 @@ export default function TasksPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [filterStatus, setFilterStatus] = useState<TaskStatus | "all">("all");
   const [filterPriority, setFilterPriority] = useState<TaskPriority | "all">("all");
+  const [filterSource, setFilterSource] = useState<TaskSource | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleSort = (field: SortField) => {
@@ -46,6 +48,9 @@ export default function TasksPage() {
     }
     if (filterPriority !== "all") {
       filtered = filtered.filter((t) => t.priority === filterPriority);
+    }
+    if (filterSource !== "all") {
+      filtered = filtered.filter((t) => t.source === filterSource);
     }
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -80,12 +85,15 @@ export default function TasksPage() {
         case "repo":
           comparison = a.repo.localeCompare(b.repo);
           break;
+        case "source":
+          comparison = a.source.localeCompare(b.source);
+          break;
       }
       return sortDirection === "asc" ? comparison : -comparison;
     });
 
     return filtered;
-  }, [tasks, sortField, sortDirection, filterStatus, filterPriority, searchQuery]);
+  }, [tasks, sortField, sortDirection, filterStatus, filterPriority, filterSource, searchQuery]);
 
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) {
@@ -147,6 +155,16 @@ export default function TasksPage() {
             <option value="medium">Medium</option>
             <option value="low">Low</option>
           </select>
+          <select
+            value={filterSource}
+            onChange={(e) => setFilterSource(e.target.value as TaskSource | "all")}
+            className="px-4 py-2 border border-border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="all">All Sources</option>
+            <option value="chat">Chat</option>
+            <option value="cowork">Cowork</option>
+            <option value="code">Code</option>
+          </select>
           <span className="text-sm text-text-muted">
             {sortedAndFilteredTasks.length} tasks
           </span>
@@ -161,6 +179,7 @@ export default function TasksPage() {
               <tr className="border-b border-border bg-surface-alt">
                 {[
                   { field: "title" as SortField, label: "Task" },
+                  { field: "source" as SortField, label: "Source" },
                   { field: "repo" as SortField, label: "Repo" },
                   { field: "status" as SortField, label: "Status" },
                   { field: "priority" as SortField, label: "Priority" },
@@ -196,6 +215,9 @@ export default function TasksPage() {
                         {task.description}
                       </p>
                     </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <SourceBadge source={task.source} />
                   </td>
                   <td className="px-6 py-4">
                     <RepoLink repo={task.repo} />
@@ -237,7 +259,7 @@ export default function TasksPage() {
               ))}
               {sortedAndFilteredTasks.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-text-muted">
+                  <td colSpan={8} className="px-6 py-12 text-center text-text-muted">
                     No tasks found matching your filters.
                   </td>
                 </tr>

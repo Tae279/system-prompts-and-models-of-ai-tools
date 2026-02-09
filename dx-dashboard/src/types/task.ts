@@ -1,5 +1,6 @@
 export type TaskStatus = "todo" | "in_progress" | "review" | "done";
 export type TaskPriority = "low" | "medium" | "high" | "urgent";
+export type TaskSource = "chat" | "cowork" | "code";
 
 export interface Task {
   id: string;
@@ -7,6 +8,7 @@ export interface Task {
   description: string;
   status: TaskStatus;
   priority: TaskPriority;
+  source: TaskSource;
   assignee: string;
   repo: string;
   dueDate: string;
@@ -21,5 +23,5 @@ export interface Column {
   tasks: Task[];
 }
 
-export type SortField = "title" | "priority" | "status" | "dueDate" | "assignee" | "repo";
+export type SortField = "title" | "priority" | "status" | "dueDate" | "assignee" | "repo" | "source";
 export type SortDirection = "asc" | "desc";

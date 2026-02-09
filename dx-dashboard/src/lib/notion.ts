@@ -1,4 +1,4 @@
-import { Task, TaskStatus, TaskPriority } from "@/types/task";
+import { Task, TaskStatus, TaskPriority, TaskSource } from "@/types/task";
 
 /**
  * Notion integration supporting two modes:
@@ -195,12 +195,22 @@ function mapNotionPages(pages: any[]): Task[] {
         ? getPlainText(repoProp.rich_text)
         : "";
 
+    const sourceProp = props.Source || props["Claude Source"];
+    const sourceRaw = sourceProp?.select
+      ? (sourceProp.select as { name: string }).name.toLowerCase()
+      : "code";
+    const source: TaskSource =
+      sourceRaw === "chat" || sourceRaw === "cowork" || sourceRaw === "code"
+        ? sourceRaw
+        : "code";
+
     return {
       id: page.id,
       title,
       description,
       status,
       priority,
+      source,
       assignee,
       repo,
       dueDate,

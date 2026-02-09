@@ -3,8 +3,8 @@ import Sidebar from "@/components/Sidebar";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Claude AI | Cowork / Code",
-  description: "Claude AI Cowork / Code - Collaborative task management powered by Claude",
+  title: "Claude | Chat / Cowork / Code",
+  description: "Track tasks from Claude Chat, Claude Cowork, and Claude Code in one dashboard",
 };
 
 export default function RootLayout({
